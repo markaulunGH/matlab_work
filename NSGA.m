@@ -15,18 +15,22 @@
 %不等式约束有1.流量的上下限限制（min_flow,max_flow);2.水位限制（不使用水位廊道），需要额外考虑死水位和设计蓄水位；3.日调节水量平衡（等式约束了）,根据起调水位，入库流量，出库流量确定
 %水电站出力函数的具体表现形式了,这里可以使用循环求和的方法
 %还有一个值得考虑的问题是，求出的水位只是时段初始或者时段末尾的不能算成是时段的平均水位
+%最后输出的结果
+%最终需要求出水电出力过程，剩余负荷过程，水库下泄流量过程，水库库水位变化过程，还有你的两个优化目标等，以上6个必须要有
 %电网负荷特性
 MAX_LOAD_POWER=11800;
-WATER_FULL_LOAD=0;
+STEP=1;
 summer_load_rate=[0.936,0.920,0.912,0.890,0.900,0.936,0.953,0.957,0.959,0.948,0.952,0.967,0.958,0.951,0.969,0.965,0.982,0.970,0.956,0.949,1.000,0.991,0.964,0.950];
 winter_load_rate=[0.901,0.899,0.881,0.880,0.883,0.918,0.920,0.945,0.955,0.982,0.957,0.981,0.969,0.962,0.939,0.908,0.928,0.971,1.000,0.993,0.989,0.984,0.919,0.895];
 load_no_water      =[0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+TYPE_SUMMER =[0,0,0,0,0,1,1,1,1,1,1,0];
 summer_load =summer_load_rate*MAX_LOAD_POWER;
 winter_load =winter_load_rate*MAX_LOAD_POWER;
 
+%使用一个二维表格记录每个月输出的5个数据
+%24小时的流量数据
 
-
-%定义目标函数；水电出力最大；系统剩余负荷最小
+%定义目标函数；水电出力最大；系统剩余负荷波动最小
 
 % 泄量上下限两段范围
 %lb = ones(24,1)*100;
@@ -40,53 +44,84 @@ winter_load =winter_load_rate*MAX_LOAD_POWER;
 % ub(:,2) = ones(24,1)*1186.2;
 %等式约束，水量平衡约束
 %Aeq=ones(1,24);
-Aeq=ones(1,24);
-beq=24*total_mouth_avg(MOUTH_NUM);
-MOUTH_NUM=2;
-%先用4月的
-%beq=[24*total_mouth_avg(MOUTH_NUM);100;100;100;100];
-%不等式约束
-if WATER_FULL_LOAD
-    lb = ones(24,1)*177;
-    ub = ones(24,1)*1186.2;
-
-else
-    
-    lb = zeros(24,1)*100;
-    ub = zeros(24,1)*100;
-   
-    for i=1:length(load_no_water)
-        if load_no_water(i) == 1
-             lb(i)=100;
-             ub(i)=100;
-        else
-            lb(i)=177;
-            ub(i)=1186.2;
-        end
+% global energy_hydro;
+% global water_level;
+% global energy_index;
+% energy_index=1;
+clear ga_out;
+for MOUTH_NUM=1:12
+    Q_in=total_mouth_avg(MOUTH_NUM);
+    Aeq=ones(1,24);
+    beq=24*Q_in;
+    A=[];
+    b=[];
+    %判断来水是不是够全天发电
+    WATER_FULL_LOAD = Q_in >= 177;
+    %根据月份判断负载选择，起调节水位
+    if TYPE_SUMMER(MOUTH_NUM)==1    
+        net_load =summer_load;
+        inital_level=2713;
+    else
+        net_load =winter_load;
+        inital_level=2712;
     end
-end
-Q_in=total_mouth_avg(MOUTH_NUM);
-inital_level=2712;
-STEP=1;
-wind_power=all_ty_days_01h(MOUTH_NUM,1,:);
-net_load =winter_load;
+    
+    % 泄量上下限两段范围,%设置不同月份的不同的水位范围
+    if WATER_FULL_LOAD
+        if Q_in > 1186.2
+            %缩小范围，来流量大于额定发电流量的时候
+            lb = ones(24,1)*1000;
+            ub = ones(24,1)*1186.2;
+            %由等式约束变成不等式约束
+            Aeq=[];
+            beq=[];
+            A=ones(1,24);
+            b=24*Q_in;
+        else
+            lb = ones(24,1)*177;
+            ub = ones(24,1)*1186.2; 
+        end
+    else
+        lb = zeros(24,1)*100;
+        ub = zeros(24,1)*100;
+        for i=1:length(load_no_water)
+            if load_no_water(i) == 1
+                lb(i)=100;
+                ub(i)=100;
+            else
+                lb(i)=177;
+                ub(i)=1186.2;
+            end
+        end
+    end 
+    %每月有5个典型日需要计算
+    for ty_day=1:5
+        fprintf('Computer Mouth:(%d/12), typical days:(%d/5)\n',MOUTH_NUM,ty_day);
+        wind_power=all_ty_days_01h(MOUTH_NUM,ty_day,:);
+
 %不等式约束 下泄流量约束
 %如果考虑了限量的上下限限制和水量平衡，那么应该可能暂时不需要考虑设计蓄水位和死水位限制
 %这里采用保留意见，如果不行
 % 定义 options 结构体,
-options = optimoptions('gamultiobj', 'PopulationSize', 290, 'Generations', 500, 'Display', 'iter','UseParallel',true);
-%设置非线性约束
+        options = optimoptions('gamultiobj', 'PopulationSize', 280, 'Generations', 600, 'Display', 'iter','UseParallel',true);
+        % 调用 gamultiobj 函数
+        [x, fval] = gamultiobj(@(x)[water_energy(x,Q_in,inital_level,STEP),power_std(x,Q_in,inital_level,STEP,wind_power,net_load)], 24, [], [], Aeq, beq, lb, ub,[] , options);
+        %反转结果
+        fval_tmp=zeros(size(fval,1),size(fval,2));
+        fval_tmp(:,1)=-fval(:,1);
+        fval_tmp(:,2)=fval(:,2);
+        %记录输出数据
+        ga_out(MOUTH_NUM).fval{ty_day}(1:size(fval_tmp,1),:)=fval_tmp;
+        ga_out(MOUTH_NUM).flow{ty_day}(1:size(x,1),:)=x;
+%         ga_out(MOUTH_NUM).hydro_energy(ty_day,1:size(energy_hydro,1),:)=energy_hydro;
+%         ga_out(MOUTH_NUM).water_level(ty_day,1:size(water_level,1),:)=water_level;
+        x=[];fval=[];
+ 
 
-%x=500;
-% 调用 gamultiobj 函数
-%[x, fval] = gamultiobj(@(x)multiobjective(x,Q_in,inital_level,STEP,wind_power,net_load), 24, [], [], Aeq, beq, lb, ub, [], options);
-[x, fval] = gamultiobj(@(x)[water_energy(x,Q_in,inital_level,STEP),power_std(x,Q_in,inital_level,STEP,wind_power,net_load)], 24, [], [], Aeq, beq, lb, ub,[] , options);%@(x) nonlcon (x,load_no_water,WATER_FULL_LOAD)
-% energy=water_energy(x,Q_in,inital_level,STEP);
-% std_power=power_std(x,Q_in,inital_level,STEP,wind_power,net_load);
-%反转结果
-fval_tmp=zeros(size(fval,1),size(fval,2));
-fval_tmp(:,1)=-fval(:,1);
-fval_tmp(:,2)=fval(:,2);
+    end
+
+end
+
 %根据流量计算尾水位
 function level=end_level(Q)
     assert(Q>=40 && Q <= 2000,"Q out of band !");
@@ -153,7 +188,11 @@ end
 % end
 %尝试使用多个适应度函数
 function energy=water_energy(Q_out,Q_in,inital_level,step)
-    %global hydro_energy;
+%     global energy_hydro;
+%     global water_level;
+%     global energy_index;
+    
+    water_level = zeros(24/step,1);
     hydro_energy=zeros(24/step,1);
     last_level=inital_level;
     len = 24/step;
@@ -171,8 +210,11 @@ function energy=water_energy(Q_out,Q_in,inital_level,step)
             hydro_energy(i)=rate*9.8*Q_out(i)*(last_level+change_levlel/2-end_level(Q_out(i)))*step;
             hydro_energy(i)=hydro_energy(i)/1000;%kw==>MW
         end
+%         water_level(i,energy_index)=last_level+change_levlel/2;%时段平均水位
+%         energy_hydro(i,energy_index)=hydro_energy(i);
         last_level = last_level+change_levlel;
     end
+%          energy_index=energy_index+1;
     %计算平均每个时段出力
     energy=-mean(hydro_energy);
     
