@@ -10,51 +10,56 @@ folder = 'G:\大一下\毕业设计多能互补\data\Pareto'; % 文件夹名称
 prefix1 = 'mouth_of_Pareto'; % 文件名前缀
 prefix_power='power_of_Pareto';
 prefix_level='level_of_Pareto';
-% for i=1:12
-%     figure(i);
-%     % 绘制散点图
-%     scatter(ga_out(i).fval{1}(:,1),ga_out(i).fval{1}(:,2),'.');
-%     xlabel(sprintf(' %d 月水电特征日小时平均出力(MW)', i),'FontName', '宋体', 'FontSize', 12);
-%     ylabel("剩余负荷标准差(MW)")
-% 
-%     % 生成文件名
-%     plotname = [prefix1, num2str(i), '.png'];
-%     % 拼接保存路径
-%     savepath = fullfile(folder, plotname);
-%     set(gca, 'LooseInset', get(gca, 'TightInset'));
-%     % 保存图
-%     saveas(gcf, savepath)
-%     % 关闭当前窗口
-%     close;
-% 
-% end
+prefix2='target_Pareto';
+for i=1:12
+    figure(i);
+    % 绘制散点图
+    hold on;
+    for j=1:1
+        scatter(ga_out(i).fval{j}(:,1),ga_out(i).fval{j}(:,2),'.');
+    end
+    
+    xlabel(sprintf(' %d 月水电特征日小时平均出力(MW)', i),'FontName', '宋体', 'FontSize', 12);
+    ylabel("剩余负荷标准差(MW)")
+    % 生成文件名
+    plotname = [prefix2, num2str(i), '.png'];
+    % 拼接保存路径
+    savepath = fullfile(folder, plotname);
+    set(gca, 'LooseInset', get(gca, 'TightInset'));
+    % 保存图
+    saveas(gcf, savepath)
+    hold off;
+    % 关闭当前窗口
+    close;
+
+end
 % pareto.fenergy=zeros(12,5,24);
 % pareto.flevel=zeros(12,5,24);
 STEP=1;
-for i=12:12
-    
-    %获取出库流量数据
-    %ga_flow_out=zeros(1,24);
-
-    ga_flow_in =total_mouth_avg(i);
-    if TYPE_SUMMER(i) == 1
-        initial_level =2713;
-        net_load=summer_load;
-    else
-        initial_level=2712;
-        net_load=winter_load;
-    end
-    for ty_day=1:5
-        ga_wind_power=all_ty_days_01h(i,ty_day,:);
-        ga_flow_out=ga_out(i).flow{ty_day}(end,:);
-        [pareto(i).fenergy(ty_day,:),pareto(i).flevel(ty_day,:),pareto(i).remain_power(ty_day,:)]=water_energy( ga_flow_out,ga_flow_in,inital_level,STEP,ga_wind_power,net_load);
-        if 1%(i==2 || i == 4 || i==8 || i==11)
-            %draw_power(ga_wind_power,pareto(i).fenergy(ty_day,:),pareto(i).remain_power(ty_day,:),net_load,i,ty_day,folder,prefix_power);
-            draw_level(ones(1,24)*total_mouth_avg(i),ga_flow_out,pareto(i).flevel(ty_day,:),i,ty_day,folder,prefix_level);
-        end
-    end
-    
-end
+% for i=1:12
+%     
+%     %获取出库流量数据
+%     %ga_flow_out=zeros(1,24);
+% 
+%     ga_flow_in =total_mouth_avg(i);
+%     if TYPE_SUMMER(i) == 1
+%         initial_level =2713;
+%         net_load=summer_load;
+%     else
+%         initial_level=2712;
+%         net_load=winter_load;
+%     end
+%     for ty_day=1:5
+%         ga_wind_power=all_ty_days_01h(i,ty_day,:);
+%         ga_flow_out=ga_out(i).flow{ty_day}(end,:);
+%         [pareto(i).fenergy(ty_day,:),pareto(i).flevel(ty_day,:),pareto(i).remain_power(ty_day,:)]=water_energy( ga_flow_out,ga_flow_in,inital_level,STEP,ga_wind_power,net_load);
+%         if 1%(i==2 || i == 4 || i==8 || i==11)
+%             %draw_power(ga_wind_power,pareto(i).fenergy(ty_day,:),pareto(i).remain_power(ty_day,:),net_load,i,ty_day,folder,prefix_power);
+%             draw_level(ones(1,24)*total_mouth_avg(i),ga_flow_out,pareto(i).flevel(ty_day,:),i,ty_day,folder,prefix_level);
+%         end
+%     end
+%     
+% end
 
 
 
@@ -142,8 +147,10 @@ end
 function success=draw_level(Q_in,Q_out,water_level,mouth,ty_day,folder,prefix)
     figure((mouth-1)*5+ty_day);
     hold on;
-    MAX_Q=max(Q_out)*1.1;
-    Min_Q=min(Q_out)*0.75;
+    MAX_Q=max([max(Q_out),Q_in])*1.15;
+    MAX_LEVEL=max(water_level)+(max(water_level)-min(water_level))*0.15;
+    Min_LEVEL=min(water_level)-(max(water_level)-min(water_level))*0.1;;
+    Min_Q=min(Q_out)*0.9;
     yyaxis left;
     plot(Q_in,'c','LineWidth',1.5,'DisplayName','入库流量');
     plot(Q_out,'m','LineWidth',1.5,'DisplayName','出库流量');
@@ -152,14 +159,16 @@ function success=draw_level(Q_in,Q_out,water_level,mouth,ty_day,folder,prefix)
     yyaxis right;
     plot(water_level,'b','LineWidth',1.5,'DisplayName','水库水位');
     ylabel("时段平均水位(米)");
+    ylim([Min_LEVEL,MAX_LEVEL]);
+
     xlabel('时段');
-    legend('Orientation', 'horizontal','Location', 'southwest');
+    legend('Orientation', 'horizontal','Location', 'northwest');
     xlim([0,24]);
     title(sprintf(' %d月第%d个典型水电出力过程', mouth,ty_day),'FontName', '宋体', 'FontSize', 12);
-    xlim([0,24]);
+    set(gca, 'LooseInset', get(gca, 'TightInset'));
     plotname = [num2str(mouth),prefix,num2str(ty_day)  '.png'];
     savepath = fullfile(folder, plotname);
     saveas(gcf, savepath);
     hold off;
-    %close;
+    close;
 end
