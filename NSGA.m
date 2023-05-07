@@ -23,7 +23,7 @@ STEP=1;
 summer_load_rate=[0.936,0.920,0.912,0.890,0.900,0.936,0.953,0.957,0.959,0.948,0.952,0.967,0.958,0.951,0.969,0.965,0.982,0.970,0.956,0.949,1.000,0.991,0.964,0.950];
 winter_load_rate=[0.901,0.899,0.881,0.880,0.883,0.918,0.920,0.945,0.955,0.982,0.957,0.981,0.969,0.962,0.939,0.908,0.928,0.971,1.000,0.993,0.989,0.984,0.919,0.895];
 load_no_water      =[0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-TYPE_SUMMER =[0,0,0,0,0,1,1,1,1,1,1,0];
+TYPE_SUMMER =[0,0,0,0,1,1,1,1,1,1,0,0];
 summer_load =summer_load_rate*MAX_LOAD_POWER;
 winter_load =winter_load_rate*MAX_LOAD_POWER;
 
@@ -48,7 +48,7 @@ winter_load =winter_load_rate*MAX_LOAD_POWER;
 % global water_level;
 % global energy_index;
 % energy_index=1;
-clear ga_out;
+%clear ga_out;
 for MOUTH_NUM=1:12
     Q_in=total_mouth_avg(MOUTH_NUM);
     Aeq=ones(1,24);
@@ -78,7 +78,7 @@ for MOUTH_NUM=1:12
             A=ones(1,24);
             b=24*Q_in;
         else
-            lb = ones(24,1)*177;
+            lb = ones(24,1)*177.001;
             ub = ones(24,1)*1186.2; 
         end
     else
@@ -89,7 +89,7 @@ for MOUTH_NUM=1:12
                 lb(i)=100;
                 ub(i)=100;
             else
-                lb(i)=177;
+                lb(i)=177.0001;
                 ub(i)=1186.2;
             end
         end
@@ -205,16 +205,13 @@ function energy=water_energy(Q_out,Q_in,inital_level,step)
         change_levlel = change_volume /(2.39*1000*1000*100);
         if Q_out(i) < 177  %如果下泄流量小于最小发电流量，那么将不进行发电
             hydro_energy(i)=0;
-            %hydro_energy(i)=rate*9.8*Q_out(i)*(last_level+change_levlel/2-end_level(Q_out(i)))*step/2000;
         else
             hydro_energy(i)=rate*9.8*Q_out(i)*(last_level+change_levlel/2-end_level(Q_out(i)))*step;
             hydro_energy(i)=hydro_energy(i)/1000;%kw==>MW
         end
-%         water_level(i,energy_index)=last_level+change_levlel/2;%时段平均水位
-%         energy_hydro(i,energy_index)=hydro_energy(i);
+
         last_level = last_level+change_levlel;
     end
-%          energy_index=energy_index+1;
     %计算平均每个时段出力
     energy=-mean(hydro_energy);
     
