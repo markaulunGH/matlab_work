@@ -19,69 +19,59 @@
 %最终需要求出水电出力过程，剩余负荷过程，水库下泄流量过程，水库库水位变化过程，还有你的两个优化目标等，以上6个必须要有
 %电网负荷特性
 MAX_LOAD_POWER=11800;
+%设置求解的最小单位（h)（但是没有完工,目前只支持1h
 STEP=1;
+%夏天冬天负荷率
 summer_load_rate=[0.936,0.920,0.912,0.890,0.900,0.936,0.953,0.957,0.959,0.948,0.952,0.967,0.958,0.951,0.969,0.965,0.982,0.970,0.956,0.949,1.000,0.991,0.964,0.950];
 winter_load_rate=[0.901,0.899,0.881,0.880,0.883,0.918,0.920,0.945,0.955,0.982,0.957,0.981,0.969,0.962,0.939,0.908,0.928,0.971,1.000,0.993,0.989,0.984,0.919,0.895];
+%不能24小时全天发电的时候，不出力的时间
 load_no_water      =[0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-TYPE_SUMMER =[0,0,0,0,1,1,1,1,1,1,0,0];
+%夏天的范围
+TYPE_SUMMER =[0,0,0,0,0,1,1,1,1,1,1,0];
 summer_load =summer_load_rate*MAX_LOAD_POWER;
 winter_load =winter_load_rate*MAX_LOAD_POWER;
+%定义一下是不是设置用水小于或等于来水，为零表示
+USE_LESS_EQUAL_IN=0;
 
 %使用一个二维表格记录每个月输出的5个数据
 %24小时的流量数据
 
 %定义目标函数；水电出力最大；系统剩余负荷波动最小
 
-% 泄量上下限两段范围
-%lb = ones(24,1)*100;
-% lb = ones(24,2);
-% lb(:,1)=ones(24,1)*100;
-% lb(:,2)=ones(24,1)*177;
-
-
-% ub = ones(24,2);
-% ub(:,1) = ones(24,1)*100;
-% ub(:,2) = ones(24,1)*1186.2;
-%等式约束，水量平衡约束
-%Aeq=ones(1,24);
-% global energy_hydro;
-% global water_level;
-% global energy_index;
-% energy_index=1;
-%clear ga_out;
-for MOUTH_NUM=1:12
+for MOUTH_NUM=8:8
     Q_in=total_mouth_avg(MOUTH_NUM);
+    %水量平衡（等式平衡
     Aeq=ones(1,24);
     beq=24*Q_in;
-    A=[];
-    b=[];
+    A=[];b=[];
+    %设置自变量范围
+    lb = ones(24,1)*177.001;
+    ub = ones(24,1)*1186.2;
     %判断来水是不是够全天发电
     WATER_FULL_LOAD = Q_in >= 177;
     %根据月份判断负载选择，起调节水位
     if TYPE_SUMMER(MOUTH_NUM)==1    
         net_load =summer_load;
-        inital_level=2713;
+        initial_level=2713;
     else
         net_load =winter_load;
-        inital_level=2712;
+        initial_level=2712;
     end
     
     % 泄量上下限两段范围,%设置不同月份的不同的水位范围
+    %如果全天可以发电
     if WATER_FULL_LOAD
+        %如果平均来流量大于额定发电量
         if Q_in > 1186.2
-            %缩小范围，来流量大于额定发电流量的时候
-            lb = ones(24,1)*1000;
-            ub = ones(24,1)*1186.2;
             %由等式约束变成不等式约束
-            Aeq=[];
-            beq=[];
-            A=ones(1,24);
-            b=24*Q_in;
-        else
-            lb = ones(24,1)*177.001;
-            ub = ones(24,1)*1186.2; 
+            Aeq=[];beq=[];
+            %设置大于额定发电流量的的情况
+            A(1,:)=ones(1,24);
+            A(2,:)=ones(1,24)*(-1);
+            b=[1186.2*24,-1186.2*24*0.6];
         end
-    else
+    else%这里是1月和2月不能做到全天发电，%选择几个小时确定不发电，以100生态流量下泄，为了给后面的调节存储一部分水
+        %清理自变量范围，需要按照不同的小时设置不同下泄流量
         lb = zeros(24,1)*100;
         ub = zeros(24,1)*100;
         for i=1:length(load_no_water)
@@ -94,35 +84,84 @@ for MOUTH_NUM=1:12
             end
         end
     end 
+    %使来用水小于或等于来水
+    if USE_LESS_EQUAL_IN
+        %取消等式约束
+        Aeq=[];beq=[];
+        A=[];
+        A(1,:)=ones(1,24);       
+        if Q_in > 1186.2
+            b=[1186.2*24,-1186.2*24*0.75];%;;
+            A(2,:)=ones(1,24)*(-1);
+        else 
+            A(2,:)=ones(1,24)*(-1);
+            b=[Q_in*24,-Q_in*24*0.85];
+        end
+        disp("SOLVE USE_LESS_EQUAL_IN");
+    end
+
     %每月有5个典型日需要计算
     for ty_day=1:5
         fprintf('Computer Mouth:(%d/12), typical days:(%d/5)\n',MOUTH_NUM,ty_day);
         wind_power=all_ty_days_01h(MOUTH_NUM,ty_day,:);
-
-%不等式约束 下泄流量约束
-%如果考虑了限量的上下限限制和水量平衡，那么应该可能暂时不需要考虑设计蓄水位和死水位限制
-%这里采用保留意见，如果不行
-% 定义 options 结构体,
-        options = optimoptions('gamultiobj', 'PopulationSize', 280, 'Generations', 600, 'Display', 'iter','UseParallel',true);
-        % 调用 gamultiobj 函数
-        [x, fval] = gamultiobj(@(x)[water_energy(x,Q_in,inital_level,STEP),power_std(x,Q_in,inital_level,STEP,wind_power,net_load)], 24, [], [], Aeq, beq, lb, ub,[] , options);
-        %反转结果
+        %如果考虑了限量的上下限限制和水量平衡，那么应该可能暂时不需要考虑设计蓄水位和死水位限制 
+        %这里采用保留意见，如果不行
+        % 定义 options 结构体,
+         x=[];fval=[];population=[];scores=[];
+         %output
+         %设置option
+        options = optimoptions('gamultiobj', 'FunctionTolerance',1e-5,'PopulationSize', 280, 'Generations', 600,'display','final','UseParallel',true);%final
+        % 调用 gamultiobj 函数%,use_rate(x,Q_in)
+        [x, fval,exitflag,output,population,scores] = gamultiobj(@(x)[water_energy(x,Q_in,initial_level,STEP),power_std(x,Q_in,initial_level,STEP,wind_power,net_load)], 24, A, b, Aeq, beq, lb, ub,[] , options);
+        %反转结果，自带函数仅能求最小值情况，要求最大值需要先转换成负数最后再把结果转换为正数
+        %fprintf('Output Generations:%d\n',output.generations);
+        output
         fval_tmp=zeros(size(fval,1),size(fval,2));
         fval_tmp(:,1)=-fval(:,1);
         fval_tmp(:,2)=fval(:,2);
+        %fval_tmp(:,3)=-fval(:,3);
         %记录输出数据
-        ga_out(MOUTH_NUM).fval{ty_day}(1:size(fval_tmp,1),:)=fval_tmp;
-        ga_out(MOUTH_NUM).flow{ty_day}(1:size(x,1),:)=x;
-%         ga_out(MOUTH_NUM).hydro_energy(ty_day,1:size(energy_hydro,1),:)=energy_hydro;
-%         ga_out(MOUTH_NUM).water_level(ty_day,1:size(water_level,1),:)=water_level;
-        x=[];fval=[];
- 
+        if USE_LESS_EQUAL_IN
+            %clear data
+            ga_out_LESS(MOUTH_NUM).fval{ty_day}=[];
+            ga_out_LESS(MOUTH_NUM).flow{ty_day}=[];
+            ga_out_LESS(MOUTH_NUM).exitflag{ty_day}=[];
+            ga_out_LESS(MOUTH_NUM).output{ty_day}=[];
+            ga_out_LESS(MOUTH_NUM).population{ty_day}=[];
+            ga_out_LESS(MOUTH_NUM).scores{ty_day}=[];
 
+            %write new value
+            ga_out_LESS(MOUTH_NUM).fval{ty_day}(1:size(fval_tmp,1),:)=fval_tmp;
+            ga_out_LESS(MOUTH_NUM).flow{ty_day}(1:size(x,1),:)=x;
+            ga_out_LESS(MOUTH_NUM).exitflag{ty_day}(1)=exitflag;
+            ga_out_LESS(MOUTH_NUM).output{ty_day}=output;
+            ga_out_LESS(MOUTH_NUM).population{ty_day}(:,:)=population;
+            ga_out_LESS(MOUTH_NUM).scores{ty_day}(:,:)=scores;
+
+        else
+            %clear data
+            ga_out(MOUTH_NUM).fval{ty_day}=[];
+            ga_out(MOUTH_NUM).flow{ty_day}=[];
+            ga_out(MOUTH_NUM).exitflag{ty_day}=[];
+            ga_out(MOUTH_NUM).output{ty_day}=[];
+            ga_out(MOUTH_NUM).population{ty_day}=[];
+            ga_out(MOUTH_NUM).scores{ty_day}=[];
+            %write new value
+            ga_out(MOUTH_NUM).fval{ty_day}(1:size(fval_tmp,1),:)=fval_tmp;
+            ga_out(MOUTH_NUM).flow{ty_day}(1:size(x,1),:)=x;
+            ga_out(MOUTH_NUM).exitflag{ty_day}(1)=exitflag;
+            ga_out(MOUTH_NUM).output{ty_day}=output;
+            ga_out(MOUTH_NUM).population{ty_day}(:,:)=population;
+            ga_out(MOUTH_NUM).scores{ty_day}(:,:)=scores;
+        end
+       
     end
 
 end
+%run('Pareto.m');
 
-%根据流量计算尾水位
+
+%根据流量线性内插计算尾水位
 function level=end_level(Q)
     assert(Q>=40 && Q <= 2000,"Q out of band !");
     if (Q>=40 && Q < 120)
@@ -148,9 +187,9 @@ end
 %可能使用全局变量不太好因此把两个适应度函数合成一个
 %Q_in，inital,step是一个数
 %尝试使用两个
-% function [energy,hydro_energy]=water_energy(Q_in,Q_out,inital_level,step)
+% function [energy,hydro_energy]=water_energy(Q_in,Q_out,initial_level,step)
 %     hydro_energy=zeros(24/step,1);
-%     last_level=inital_level;
+%     last_level=initial_level;
 %     len = 24/step;
 %     %出力效率取0.9
 %     %step为小时数
@@ -178,23 +217,18 @@ end
 % end
 %两个适应度函数合一
 
-% function [energy, load_std] = multiobjective(x,Q_in,inital_level,step,wind_power,net_load)
+% function [energy, load_std] = multiobjective(x,Q_in,initial_level,step,wind_power,net_load)
 %     % 计算水电站出力
-%     [energy,hydro_power]=water_energy(Q_in,x,inital_level,step);
+%     [energy,hydro_power]=water_energy(Q_in,x,initial_level,step);
 % 
 %     % 计算出力标准差
 %     load_std=power_std(hydro_power,wind_power,net_load);
 %     %f=[energy, load_std];
 % end
 %尝试使用多个适应度函数
-function energy=water_energy(Q_out,Q_in,inital_level,step)
-%     global energy_hydro;
-%     global water_level;
-%     global energy_index;
-    
-    water_level = zeros(24/step,1);
+function energy=water_energy(Q_out,Q_in,initial_level,step)
     hydro_energy=zeros(24/step,1);
-    last_level=inital_level;
+    last_level=initial_level;
     len = 24/step;
     %出力效率取0.9
     %step为小时数
@@ -216,14 +250,14 @@ function energy=water_energy(Q_out,Q_in,inital_level,step)
     energy=-mean(hydro_energy);
     
 end
-%计算出力最小标准差最小的函数%时间可能到了，明天再想想把load_std使用流量输入
+%计算出力最小标准差最小的函数%
 %以每小时出力为一个序列
 %其中的water_power 与自变量x有关
 %water,wind_power,net_load均是一个数组
-function load_std=power_std(Q_out,Q_in,inital_level,step,wind_power,net_load)
+function load_std=power_std(Q_out,Q_in,initial_level,step,wind_power,net_load)
     result=zeros(24,1);
     hydro_energy=zeros(24/step,1);
-    last_level=inital_level;
+    last_level=initial_level;
     len = 24/step;
     %出力效率取0.9
     %step为小时数
@@ -245,7 +279,14 @@ function load_std=power_std(Q_out,Q_in,inital_level,step,wind_power,net_load)
     
     load_std = std(result);
 end
-%设置非线性约束
+
+%添加适应函数之来水利用率，目前没有添加，之前添加过后效果也不太理想
+function rate =use_rate(Q_out,Q_in)
+    rate= (-sum(Q_out)/(Q_in*24))*100;
+end
+
+
+%设置非线性约束%暂时没有添加
 function [c,ceq] = nonlcon(x,work_no_load,full_load)
 
 if full_load 

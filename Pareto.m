@@ -2,24 +2,25 @@
 MAX_LOAD_POWER=11800;
 summer_load_rate=[0.936,0.920,0.912,0.890,0.900,0.936,0.953,0.957,0.959,0.948,0.952,0.967,0.958,0.951,0.969,0.965,0.982,0.970,0.956,0.949,1.000,0.991,0.964,0.950];
 winter_load_rate=[0.901,0.899,0.881,0.880,0.883,0.918,0.920,0.945,0.955,0.982,0.957,0.981,0.969,0.962,0.939,0.908,0.928,0.971,1.000,0.993,0.989,0.984,0.919,0.895];
-TYPE_SUMMER =[0,0,0,0,1,1,1,1,1,1,0,0];
+TYPE_SUMMER =[0,0,0,0,0,1,1,1,1,1,1,0];
 summer_load =summer_load_rate*MAX_LOAD_POWER;
 winter_load =winter_load_rate*MAX_LOAD_POWER;
 %Pareto图的绘制
-folder = 'G:\大一下\毕业设计多能互补\data\Pareto'; % 文件夹名称
+folder = 'G:\大一下\毕业设计多能互补\data\Pareto_EQUAL'; % 文件夹名称
 prefix1 = 'mouth_of_Pareto'; % 文件名前缀
-prefix_power='power_of_Pareto';
-prefix_level='level_of_Pareto';
-prefix2='target_Pareto';
-for i=1:12
+prefix_power='power_of_Pareto'; % 文件名前缀
+prefix_level='level_of_Pareto'; % 文件名前缀
+prefix2='target_Pareto'; % 文件名前缀
+for i=8:8
     figure(i);
     % 绘制散点图
-    hold on;
-    for j=1:1
+    hold on;%保持打开让多个图绘制到同一图上
+    for j=1:5
         scatter(ga_out(i).fval{j}(:,1),ga_out(i).fval{j}(:,2),'.');
     end
-    
+    %设置x轴标题
     xlabel(sprintf(' %d 月水电特征日小时平均出力(MW)', i),'FontName', '宋体', 'FontSize', 12);
+    %y轴标题
     ylabel("剩余负荷标准差(MW)")
     % 生成文件名
     plotname = [prefix2, num2str(i), '.png'];
@@ -31,36 +32,37 @@ for i=1:12
     hold off;
     % 关闭当前窗口
     close;
-
 end
-% pareto.fenergy=zeros(12,5,24);
-% pareto.flevel=zeros(12,5,24);
-STEP=1;
-% for i=1:12
-%     
-%     %获取出库流量数据
-%     %ga_flow_out=zeros(1,24);
-% 
-%     ga_flow_in =total_mouth_avg(i);
-%     if TYPE_SUMMER(i) == 1
-%         initial_level =2713;
-%         net_load=summer_load;
-%     else
-%         initial_level=2712;
-%         net_load=winter_load;
-%     end
-%     for ty_day=1:5
-%         ga_wind_power=all_ty_days_01h(i,ty_day,:);
-%         ga_flow_out=ga_out(i).flow{ty_day}(end,:);
-%         [pareto(i).fenergy(ty_day,:),pareto(i).flevel(ty_day,:),pareto(i).remain_power(ty_day,:)]=water_energy( ga_flow_out,ga_flow_in,inital_level,STEP,ga_wind_power,net_load);
-%         if 1%(i==2 || i == 4 || i==8 || i==11)
-%             %draw_power(ga_wind_power,pareto(i).fenergy(ty_day,:),pareto(i).remain_power(ty_day,:),net_load,i,ty_day,folder,prefix_power);
-%             draw_level(ones(1,24)*total_mouth_avg(i),ga_flow_out,pareto(i).flevel(ty_day,:),i,ty_day,folder,prefix_level);
-%         end
-%     end
-%     
-% end
 
+STEP=1;
+for i=8:8
+    %获取入库流量数据
+    ga_flow_in =total_mouth_avg(i);
+    %确定起调水位，电网负荷
+    if TYPE_SUMMER(i) == 1
+        initial_level =2713;
+        net_load=summer_load;
+    else
+        initial_level=2712;
+        net_load=winter_load;
+    end
+    for ty_day=1:5
+        %获取风力发电数据
+        ga_wind_power=all_ty_days_01h(i,ty_day,:);
+        %获取得分最高的流量数据，默认最后一组数据流量最高
+        ga_flow_out=ga_out(i).flow{ty_day}(end,:);
+        [pareto(i).fenergy(ty_day,:),pareto(i).flevel(ty_day,:),pareto(i).remain_power(ty_day,:),reduce_rate(ty_day,i),ww_left(ty_day,i),w_left(ty_day,i)]=water_energy( ga_flow_out,ga_flow_in,initial_level,STEP,ga_wind_power,net_load);
+        if 1%(i==2 || i == 4 || i==8 || i==11)
+            %画图
+            draw_power(ga_wind_power,pareto(i).fenergy(ty_day,:),pareto(i).remain_power(ty_day,:),net_load,i,ty_day,folder,prefix_power);
+            draw_level(ones(1,24)*total_mouth_avg(i),ga_flow_out,pareto(i).flevel(ty_day,:),i,ty_day,folder,prefix_level);
+        end
+    end
+    %计算只有风和有风和有水的峰谷差
+    peak_valley_diff=w_left-ww_left;
+    
+end
+mean(peak_valley_diff)
 
 
 %根据流量计算尾水位
@@ -78,10 +80,11 @@ function level=end_level(Q)
         level=2597.1+3.4*(Q-900)/(2000-900);
     end
 end
-%计算电站24小时出力，水位变化，剩余负荷
-function [hydro_energy,water_level,remain_power]=water_energy(Q_out,Q_in,inital_level,step,wind_power,net_load)
+%计算电站24小时出力，水位变化，剩余负荷,剩余负荷变化
+function [hydro_energy,water_level,remain_power,reduce_rate,ww_left,w_left]=water_energy(Q_out,Q_in,inital_level,step,wind_power,net_load)
     water_level = zeros(24/step,1);
     remain_power=zeros(24/step,1);
+    remain_only_wind=zeros(24/step,1);
     hydro_energy=zeros(24/step,1);
     last_level=inital_level;
     len = 24/step;
@@ -100,28 +103,36 @@ function [hydro_energy,water_level,remain_power]=water_energy(Q_out,Q_in,inital_
         last_level = last_level+change_levlel;
         water_level(i)=last_level+change_levlel/2;%时段平均水位
         remain_power(i) =net_load(i)-hydro_energy(i)-wind_power(i);
+        remain_only_wind(i) = net_load(i)-wind_power(i);
     end  
+    %削减的波动率
+    reduce_rate=(std( remain_only_wind)-std( remain_power))/std( remain_only_wind);
+    %有风有水的时候剩余负荷峰谷差
+    ww_left = max(remain_power)-min(remain_power);
+    %只有风的时候剩余负荷峰谷差
+    w_left  = max(remain_only_wind)-min(remain_only_wind);
+
 end
 
 %绘制堆叠
 function succcess=draw_power(wind_power,water_power,remain_power,net_load,mouth,ty_day,folder,prefix)
     figure((mouth-1)*5+ty_day);
     hold on;
-    if mouth ==1
-        max_water_power=max(water_power)*1.9;
+    if mouth ==1 || mouth ==2
+        max_water_power=max(water_power)*1.95;
     else
-        max_water_power=max(water_power)*1.7;
+        max_water_power=max(water_power)*1.85;
     end
-    colors =[ 0, 1, 0;0, 0, 1];
+    %颜色数组
+    %colors =[ 0, 1, 0;0, 0, 1];
+    %初始化获取数据
     area_power=zeros(24,2);
     area_power(:,1)=wind_power(1,:);
     area_power(:,2)=water_power(1,:);
-    yyaxis right;
-    h=area(area_power);
+    yyaxis right;%y的右轴%右轴是水电和风力发电
+    area(area_power);
     % 设置每个数据序列的标注名称
-    colormap(colors);
-    %labels = {'风电', '水电'};
-    %legend({'风电','水电'});
+    %colormap(colors);
     newcolors = [0 0.5 1; 0.5 0 1];
     colororder(newcolors);
     ylim([0, max_water_power]);
@@ -149,7 +160,7 @@ function success=draw_level(Q_in,Q_out,water_level,mouth,ty_day,folder,prefix)
     hold on;
     MAX_Q=max([max(Q_out),Q_in])*1.15;
     MAX_LEVEL=max(water_level)+(max(water_level)-min(water_level))*0.15;
-    Min_LEVEL=min(water_level)-(max(water_level)-min(water_level))*0.1;;
+    Min_LEVEL=min(water_level)-(max(water_level)-min(water_level))*0.1;
     Min_Q=min(Q_out)*0.9;
     yyaxis left;
     plot(Q_in,'c','LineWidth',1.5,'DisplayName','入库流量');
