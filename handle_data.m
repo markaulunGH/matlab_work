@@ -1,13 +1,19 @@
+%%功能，加载风力出力数据和流量数据%%
+
 %加载数据脚本，执行其他命令之前需要执行本脚本
 filename = 'G:\大一下\毕业设计多能互补\data\金伦+毕业论文材料\wind_power_data.xls';
-sheetNames = {'1yue', '2yue', '3yue', '4yue', '5yue', '6yue', '7yue', '8yue', '9yue', '10yue', '11yue', '12yue'}; % 工作表名称
-skipRows = 1; % 跳过每个工作表的第一行
+% 工作表名称,方便集中处理
+sheetNames = {'1yue', '2yue', '3yue', '4yue', '5yue', '6yue', '7yue', '8yue', '9yue', '10yue', '11yue', '12yue'};
+% 跳过每个工作表的第一行%第一行是无用信息
+skipRows = 1; 
+%从xls读取数据到matlab中
 for i = 1:length(sheetNames)
     sheetName = sheetNames{i};
     data(i).table = readtable(filename, 'Sheet', sheetName,'HeaderLines', skipRows); % 读取数据表格,并且从第二行开始读
     data(i).table = table2array(data(i).table); % table2array，方便计算 
 end
 total_year=0;%年出力
+%计算一些特征值
 for i = 1:length(sheetNames)
     day(i).avg=nanmean(data(i).table);%计算一天中的平均值
     day(i).max  =max(data(i).table);%计算一天中的最大值
@@ -36,114 +42,93 @@ end
 
 %scatter(day(1).max);
 % 定义要保存的文件夹和文件名前缀
-folder = 'G:\大一下\毕业设计多能互补\data\plot_out'; % 文件夹名称
+folder = 'G:\大一下\毕业设计多能互补\data\test_out'; % 文件夹名称
 prefix1 = 'mouth_of_everyday'; % 文件名前缀
-prefix = 'mouth';
+prefix = 'mouth';% 文件名前缀
 % % % 循环生成和保存每个天平均值然后月的图
-% for i = 1:12
-%     % 生成第i个图
-%     figure(i)
-%     % 假设第i个图的变量名称为data_i
-%     %plot(day(i).avg ,'m');
-%     hold on;
-%     %yyaxis left;
-%     yyaxis left;
-%     plot(day(i).max,'--r','LineWidth',1,'DisplayName', '最大出力'); %月最大画年上面%
-%     plot(day(i).avg,'-m','LineWidth',2,'DisplayName', '平均出力'); %月平均画年上面%
-%     %平均，发电量，%最大功率，最小功率
-%     plot(day(i).min,'--g','LineWidth',1,'DisplayName', '最小出力'); %月最小画年上面%
-%     %yyaxis right;
-%     %ylabel('MW*h');
-%     %plot(day(i).sum,'k','LineWidth',1.0,'DisplayName', '累计出力'); %月累计出力画上面%
-%     ylabel('出力(MW)');
-%     ylim([0, 110]);
-%     yyaxis right;
-%     plot(day(i).std,':b','LineWidth',1,'DisplayName', '标准差'); %月平均画年上面%
-%     xlabel('日期(天数）');
-%     ylabel("标准差(MW)")
-%     ylim([0, 110]);
-%     legend('Location', 'northeast','NumColumns', 2);
-%     
-%     % 设置坐标轴范围，方便查看
-%     
-%     xlim([1, 31]);
-%     %title(i,'月出力图');
-%     title(sprintf(' %d 月出力图', i),'FontName', '宋体', 'FontSize', 20);    
-%      
-%     % 生成文件名
-%     plotname = [prefix, num2str(i), '.png'];
-%                                                                                                                                                                                                               
-%     % 拼接保存路径
-%     savepath = fullfile(folder, plotname);
-% 
-%     width=700;
-%     height=600;
-% 
-%     set(gcf, 'Units', 'pixels','Position', [100 100 width height]);%设置长宽比
-%     set(gca, 'LooseInset', get(gca, 'TightInset'));
-%     
-%     % 保存图
-%     saveas(gcf, savepath);
-%     hold off;
-%     % 关闭当前窗口
-%     close;
-% end
-% % 循环生成和保存每个图
-% %画一个月所有天数的出力图
-% for i = 1:12
-%     % 生成第i个图
-%     figure(i)
-%     % 假设第i个图的变量名称为data_
-% 
-%     hold on;
-%     colors = hsv(31);%生成31种不同的颜色
-%     for j=1:size(data(i).table,2)
-%         %colData = data(i).table(:, j);
-%         plot(data(i).table(:, j),'Color',colors(j,:),'LineWidth',0.5);
-%         
-%     end
-%     %画平均值
-%     plot(day(i).minute_avg ,'k','LineWidth',1.5);
-%     
-%     xlabel('时段(分钟）');
-%     ylabel('出力(MW)');
-%     % 设置坐标轴范围，方便查看
-%     ylim([0, 100]);
-%     xlim([1, 1440]);
-%     % 设置 x 轴和 y 轴的标记值
-% 
-%     title(sprintf(' %d 月每天出力图', i),'FontName', '宋体', 'FontSize', 20);
-%     %自动裁掉空白部分
-%     %tightfig(gcf);
-% 
-%     % 修改 X 轴刻度
-%     % 设置x轴刻度
-%     set(gca, 'XTick', [ 300 600 900 1200 1440]); %
-%     
-% 
-%     
-%     % 生成文件名
-%     plotname = [prefix1, num2str(i), '.png'];
-%     % 拼接保存路径
-%     savepath = fullfile(folder, plotname);
-% 
-%     width=700;
-%     height=600;
-%     %TightInset 表示获取 axes 的 tight inset（紧凑的内边距），LooseInset 表示设置 axes 的 loose inset（宽松的内边距）。
-%     % 通过将 LooseInset 设置为 TightInset，可以确保图像的边距最小化。
-%     set(gcf, 'Units', 'pixels','Position', [100 100 width height]);%设置长宽比
-%     set(gca, 'LooseInset', get(gca, 'TightInset'));
-% 
-% 
-%     % 保存图
-%     saveas(gcf, savepath)
-%     %print(savepath, '-dpng', '-r0');
-%     % 关闭当前窗口
-%     hold off;
-%     close;
-% end
+for i = 1:12
+    % 生成第i个图
+    figure(i)
+    %使多个图绘制到同一个图上面
+    hold on;
+    %画左边y轴的图像
+    yyaxis left;
+    plot(day(i).max,'--r','LineWidth',1,'DisplayName', '最大出力'); %月最大画年上面%
+    plot(day(i).avg,'-m','LineWidth',2,'DisplayName', '平均出力'); %月平均画年上面%
+    %平均，发电量，%最大功率，最小功率
+    plot(day(i).min,'--g','LineWidth',1,'DisplayName', '最小出力'); %月最小画年上面%
+    %左y轴标记
+    ylabel('出力(MW)');
+    %左y轴的范围
+    ylim([0, 110]);
+    %画右轴%其实这里不一定需要右轴
+    yyaxis right;
+    plot(day(i).std,':b','LineWidth',1,'DisplayName', '标准差'); %月平均画年上面%
+    xlabel('日期(天数）');
+    ylabel("标准差(MW)")
+    ylim([0, 110]);
+    %图例的位置和图例的行数
+    legend('Location', 'northeast','NumColumns', 2);
+    % 设置坐标轴范围，方便查看
+    xlim([1, 31]);
+    %图的标题，可以循环设置每一个月的情况
+    title(sprintf(' %d 月出力图', i),'FontName', '宋体', 'FontSize', 20);    
+    % 生成文件名
+    plotname = [prefix, num2str(i), '.png'];                                                                                                                                                                                                      
+    % 拼接保存路径
+    savepath = fullfile(folder, plotname);
+    %设置图片长宽
+    width=700;
+    height=600;
+    %设置长宽比和图框的出现的位置
+    set(gcf, 'Units', 'pixels','Position', [100 100 width height]);%设置长宽比
+    %设置图片空白边最小
+    set(gca, 'LooseInset', get(gca, 'TightInset'));
+    % 保存图
+    saveas(gcf, savepath);
+    hold off;
+    % 关闭当前窗口
+    close;
+end
+% 循环生成和保存每个图
+%画一个月所有天数的出力图
+for i = 1:12
+    % 生成第i个图
+    figure(i)
+    hold on;
+    colors = hsv(31);%生成31种不同的颜色
+    for j=1:size(data(i).table,2)
+        plot(data(i).table(:, j),'Color',colors(j,:),'LineWidth',0.5);
+    end
+    %画平均值
+    plot(day(i).minute_avg ,'k','LineWidth',1.5);
+    xlabel('时段(分钟）');
+    ylabel('出力(MW)');
+    % 设置坐标轴范围，方便查看
+    ylim([0, 100]);
+    xlim([1, 1440]);
+    % 设置 x 轴和 y 轴的标记值
+    title(sprintf(' %d 月每天出力图', i),'FontName', '宋体', 'FontSize', 20);
+    % 设置x轴刻度
+    set(gca, 'XTick', [ 300 600 900 1200 1440]); %
+    % 生成文件名
+    plotname = [prefix1, num2str(i), '.png'];
+    % 拼接保存路径
+    savepath = fullfile(folder, plotname);
+    width=700;
+    height=600;
+    %TightInset 表示获取 axes 的 tight inset（紧凑的内边距），LooseInset 表示设置 axes 的 loose inset（宽松的内边距）。
+    % 通过将 LooseInset 设置为 TightInset，可以确保图像的边距最小化。
+    set(gcf, 'Units', 'pixels','Position', [100 100 width height]);%设置长宽比
+    set(gca, 'LooseInset', get(gca, 'TightInset'));
+    % 保存图
+    saveas(gcf, savepath)
+    hold off;
+    % 关闭当前窗口
+    close;
+end
 
-%total
+%风电场月平均，发电量，%最大功率，最小功率画图
 year_power=mean([mouth.avg]);
 hold on;
 yyaxis left;
@@ -159,9 +144,7 @@ plot([mouth.sum],'k','LineWidth',1.5,'DisplayName', '累计出力'); %月累计�
 legend('Location', 'best');
 xlabel('月份');
 % 设置坐标轴范围，方便查看
-
 xlim([1, 12]);
-%title(i,'月出力图');
 title(sprintf("各月出力图"), 'FontName', '宋体', 'FontSize', 20);
 hold off;
 
