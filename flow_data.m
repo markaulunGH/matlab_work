@@ -1,3 +1,12 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%注意%注意%注意%%%%%%%%%%%%%%%%%%%%%
+%% 执行的前提是，需要执行加载数据的脚本 handle_data.m%%
+%%需要handle_data.m 处理的风电场月平均出力%%
+%本脚本暂未设置自动保存，需要手动保存绘出的折线图
+%流量数据文件夹，这里处理流量数据的时候只按照特定文件进行设计
+%如果需要处理其他流量的数据文件，可能需要对下面的处理过程进行修改
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 flow_filename='G:\大一下\毕业设计多能互补\data\金伦+毕业论文材料\flow_data.xls';
 sheetnames='total';
 
@@ -25,6 +34,7 @@ yyaxis left;
 for i=1:years_num
        years_flow(:,i)=monthly_means((i-1)*12+1:i*12);
 end
+%计算一些特征值
 total_mouth_avg=mean(years_flow,2);
 flow_max        =max((years_flow'));
 flow_min        =min((years_flow'));
@@ -48,9 +58,7 @@ line_flow=plot(total_mouth_avg ,'k','LineWidth',1.5,'DisplayName', '平均来水
     hold on;
     colors = hsv(years_num);%生成不同的颜色
     for j=30:years_num
-        %colData = data(i).table(:, j);
         plot(years_flow(:, j),'Color',colors(j,:),'LineWidth',0.5,'DisplayName','');
-        
     end
 
     width=800;
@@ -59,9 +67,8 @@ line_flow=plot(total_mouth_avg ,'k','LineWidth',1.5,'DisplayName', '平均来水
     % 通过将 LooseInset 设置为 TightInset，可以确保图像的边距最小化。
     set(gcf, 'Units', 'pixels','Position', [100 100 width height]);%设置长宽比
     set(gca, 'LooseInset', get(gca, 'TightInset'));
-
     hold off;
-
+%只设置部分需要设置图例的曲线
 legend([line_flow,line_wind] ,'平均来水流量','风电场平均出力');
 % 检查结果
 disp(length(monthly_means));  % 输出：456
