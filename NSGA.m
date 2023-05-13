@@ -31,14 +31,14 @@ TYPE_SUMMER =[0,0,0,0,0,1,1,1,1,1,1,0];
 summer_load =summer_load_rate*MAX_LOAD_POWER;
 winter_load =winter_load_rate*MAX_LOAD_POWER;
 %定义一下是不是设置用水小于或等于来水，为零表示
-USE_LESS_EQUAL_IN=0;
+USE_LESS_EQUAL_IN=1;
 
 %使用一个二维表格记录每个月输出的5个数据
 %24小时的流量数据
 
 %定义目标函数；水电出力最大；系统剩余负荷波动最小
 
-for MOUTH_NUM=8:8
+for MOUTH_NUM=1:1
     Q_in=total_mouth_avg(MOUTH_NUM);
     %水量平衡（等式平衡
     Aeq=ones(1,24);
@@ -68,7 +68,7 @@ for MOUTH_NUM=8:8
             %设置大于额定发电流量的的情况
             A(1,:)=ones(1,24);
             A(2,:)=ones(1,24)*(-1);
-            b=[1186.2*24,-1186.2*24*0.6];
+            b=[1186.2*24,-1186.2*24*0.96];
         end
     else%这里是1月和2月不能做到全天发电，%选择几个小时确定不发电，以100生态流量下泄，为了给后面的调节存储一部分水
         %清理自变量范围，需要按照不同的小时设置不同下泄流量
@@ -84,6 +84,7 @@ for MOUTH_NUM=8:8
             end
         end
     end 
+    intcon=[];
     %使来用水小于或等于来水
     if USE_LESS_EQUAL_IN
         %取消等式约束
@@ -91,35 +92,39 @@ for MOUTH_NUM=8:8
         A=[];
         A(1,:)=ones(1,24);       
         if Q_in > 1186.2
-            b=[1186.2*24,-1186.2*24*0.75];%;;
+            b=[1186.2*24*0.98,-1186.2*24*0.70];%;;
             A(2,:)=ones(1,24)*(-1);
         else 
             A(2,:)=ones(1,24)*(-1);
-            b=[Q_in*24,-Q_in*24*0.85];
+            b=[Q_in*24,-Q_in*24*0.80];
         end
+        %整数约束,不知道可不可以扩大搜索空间
+        intcon=1:1:23;
         disp("SOLVE USE_LESS_EQUAL_IN");
     end
 
     %每月有5个典型日需要计算
     for ty_day=1:5
         fprintf('Computer Mouth:(%d/12), typical days:(%d/5)\n',MOUTH_NUM,ty_day);
-        wind_power=all_ty_days_01h(MOUTH_NUM,ty_day,:);
+        wind_power=zeros(1,size(all_ty_days_01h,3));
+        wind_power(:,:)=all_ty_days_01h(MOUTH_NUM,ty_day,:);
         %如果考虑了限量的上下限限制和水量平衡，那么应该可能暂时不需要考虑设计蓄水位和死水位限制 
         %这里采用保留意见，如果不行
         % 定义 options 结构体,
          x=[];fval=[];population=[];scores=[];
          %output
          %设置option
-        options = optimoptions('gamultiobj', 'FunctionTolerance',1e-5,'PopulationSize', 280, 'Generations', 600,'display','final','UseParallel',true);%final
+        options = optimoptions('gamultiobj', 'FunctionTolerance',1e-6,'PopulationSize', 200, 'Generations', 600,'display','final','UseParallel',true);%final
         % 调用 gamultiobj 函数%,use_rate(x,Q_in)
-        [x, fval,exitflag,output,population,scores] = gamultiobj(@(x)[water_energy(x,Q_in,initial_level,STEP),power_std(x,Q_in,initial_level,STEP,wind_power,net_load)], 24, A, b, Aeq, beq, lb, ub,[] , options);
+        %[x, fval,exitflag,output,population,scores] = gamultiobj(@(x)[water_energy(x,Q_in,initial_level,STEP),power_std(x,Q_in,initial_level,STEP,wind_power,net_load)], 24, A, b, Aeq, beq, lb, ub,[] , options);
+        [x, fval,exitflag,output,population,scores] = gamultiobj(@(x)[V_water_energy(x,Q_in,initial_level,STEP,wind_power,net_load,WATER_FULL_LOAD)], 24, A, b, Aeq, beq, lb, ub,[] ,intcon, options);
         %反转结果，自带函数仅能求最小值情况，要求最大值需要先转换成负数最后再把结果转换为正数
-        %fprintf('Output Generations:%d\n',output.generations);
-        output
+        fprintf('Output Generations:%d\n',output.generations);
+        %output
         fval_tmp=zeros(size(fval,1),size(fval,2));
         fval_tmp(:,1)=-fval(:,1);
         fval_tmp(:,2)=fval(:,2);
-        %fval_tmp(:,3)=-fval(:,3);
+        %fval_tmp(:,3)=fval(:,3);
         %记录输出数据
         if USE_LESS_EQUAL_IN
             %clear data
@@ -154,6 +159,7 @@ for MOUTH_NUM=8:8
             ga_out(MOUTH_NUM).population{ty_day}(:,:)=population;
             ga_out(MOUTH_NUM).scores{ty_day}(:,:)=scores;
         end
+
        
     end
 
@@ -250,6 +256,52 @@ function energy=water_energy(Q_out,Q_in,initial_level,step)
     energy=-mean(hydro_energy);
     
 end
+%尝试一个函数返回两个值，看能不能求
+function fitness=V_water_energy(Q_out,Q_in,initial_level,step,wind_power,net_load,WORK_FULL_DAY)
+    hydro_energy=zeros(1,24/step);
+    change_volume=zeros(1,24/step);
+    change_level=zeros(1,24/step);
+    last_level=initial_level;
+    step_time=step*3600;%每个时段的秒数
+    Q_in_group=ones(1,24/step)*Q_in;
+    len = 24/step;
+    %出力效率取0.9
+    %step为小时数
+    rate=0.90;
+    %这里可以后面考虑改成并行计算,这里不同的情况有不同的，比如只有1，2月不能满发
+    %那么可以区分是否能满发，如果可以满发就按
+    change_volume = (Q_in_group - Q_out)*step_time;
+    change_levlel = change_volume /(2.39*1000*1000*100);
+    %分离不同天，可以减少if 判断的次数
+    if WORK_FULL_DAY
+        for i = 1:len
+            hydro_energy(i)=last_level+change_levlel(i)/2-end_level(Q_out(i));%这里只计算不能并行的部分，这里是计算时段平均水位差
+            last_level = last_level+change_levlel(i);
+        end
+    else
+        for i = 1:len
+            if Q_out(i) < 177  %如果下泄流量小于最小发电流量，那么将不进行发电
+                hydro_energy(i)=0;
+            else
+                hydro_energy(i)=last_level+change_levlel(i)/2-end_level(Q_out(i));%这里只计算不能并行的部分，这里是计算时段平均水位差
+            end
+            last_level = last_level+change_levlel(i);
+        end
+
+    end
+
+    hydro_energy=(hydro_energy.*Q_out*rate)*9.8*step/1000;     %计算出力并且 kw==>MW
+    remain_power=net_load-hydro_energy-wind_power;
+    load_std=std(remain_power);
+    %计算平均每个时段出力
+    energy=-mean(hydro_energy);
+    %添加剩余负荷差波动范围最小
+    %peak_diff=(max(remain_power)-min(remain_power))*0.4;
+
+    fitness = [energy, load_std];
+    
+end
+
 %计算出力最小标准差最小的函数%
 %以每小时出力为一个序列
 %其中的water_power 与自变量x有关
