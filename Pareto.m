@@ -111,7 +111,7 @@ function [hydro_energy,water_level,remain_power,reduce_rate,ww_left,w_left]=wate
     %计算水位和小时平均出力
     for i = 1:len
         change_volume = (Q_in - Q_out(i))*step*3600;
-        change_levlel = change_volume /(2.39*1000*1000*100);
+        change_levlel = change_volume /(2.39*1000*1000*100/5);
         if Q_out(i) < 177  %如果下泄流量小于最小发电流量，那么将不进行发电
             hydro_energy(i)=0;
         else

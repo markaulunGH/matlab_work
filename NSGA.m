@@ -37,8 +37,24 @@ USE_LESS_EQUAL_IN=1;
 %24小时的流量数据
 
 %定义目标函数；水电出力最大；系统剩余负荷波动最小
+for count=1:3
+    %原方案
+    if count==1
+        USE_LESS_EQUAL_IN=0;
+        USE_POPULATIONS=280;
+        USE_MAX_GENS=600;
+    elseif count == 2 %优化方案1
+        USE_LESS_EQUAL_IN=1;
+        USE_POPULATIONS=280;
+        USE_MAX_GENS=1000;
+    else  %优化方案2
+        USE_LESS_EQUAL_IN=1;
+        USE_POPULATIONS=200;
+        USE_MAX_GENS=600;
+    end
 
-for MOUTH_NUM=1:1
+
+for MOUTH_NUM=1:12
     Q_in=total_mouth_avg(MOUTH_NUM);
     %水量平衡（等式平衡
     Aeq=ones(1,24);
@@ -105,7 +121,7 @@ for MOUTH_NUM=1:1
 
     %每月有5个典型日需要计算
     for ty_day=1:5
-        fprintf('Computer Mouth:(%d/12), typical days:(%d/5)\n',MOUTH_NUM,ty_day);
+        fprintf('Computer Mouth:(%d/12), typical days:(%d/5);Solutions:(%d/3)\n',MOUTH_NUM,ty_day,count);
         wind_power=zeros(1,size(all_ty_days_01h,3));
         wind_power(:,:)=all_ty_days_01h(MOUTH_NUM,ty_day,:);
         %如果考虑了限量的上下限限制和水量平衡，那么应该可能暂时不需要考虑设计蓄水位和死水位限制 
@@ -114,10 +130,10 @@ for MOUTH_NUM=1:1
          x=[];fval=[];population=[];scores=[];
          %output
          %设置option
-        options = optimoptions('gamultiobj', 'FunctionTolerance',1e-6,'PopulationSize', 200, 'Generations', 600,'display','final','UseParallel',true);%final
+        options = optimoptions('gamultiobj', 'FunctionTolerance',1e-6,'PopulationSize', USE_POPULATIONS, 'Generations',USE_MAX_GENS,'display','final','UseParallel',true);%final
         % 调用 gamultiobj 函数%,use_rate(x,Q_in)
         %[x, fval,exitflag,output,population,scores] = gamultiobj(@(x)[water_energy(x,Q_in,initial_level,STEP),power_std(x,Q_in,initial_level,STEP,wind_power,net_load)], 24, A, b, Aeq, beq, lb, ub,[] , options);
-        [x, fval,exitflag,output,population,scores] = gamultiobj(@(x)[V_water_energy(x,Q_in,initial_level,STEP,wind_power,net_load,WATER_FULL_LOAD)], 24, A, b, Aeq, beq, lb, ub,[] ,intcon, options);
+        [x, fval,exitflag,output,population,scores] = gamultiobj(@(x)[V_water_energy(x,Q_in,initial_level,STEP,wind_power,net_load,WATER_FULL_LOAD)], 24, A, b, Aeq, beq, lb, ub,[] ,[], options);
         %反转结果，自带函数仅能求最小值情况，要求最大值需要先转换成负数最后再把结果转换为正数
         fprintf('Output Generations:%d\n',output.generations);
         %output
@@ -164,6 +180,17 @@ for MOUTH_NUM=1:1
     end
 
 end
+    %原方案
+    if count==1     
+        ga_out_1=ga_out;
+    elseif count == 2 %优化方案1
+        ga_out_LESS_2=ga_out_LESS;      
+    else  %优化方案2
+        ga_out_LESS_3=ga_out_LESS;      
+    end
+
+
+end
 %run('Pareto.m');
 
 
@@ -183,95 +210,36 @@ function level=end_level(Q)
     end
 end
 
-
+%可能使用全局变量不太好因此把两个适应度函数合成一个适应度函数以减少计算时间
 %计算水电每时段出力，step是以小时为基本单位
 %还需要计算每时刻的水位
 %如果需要每次确定上游的水位应该怎么确定呢，上游水位不仅与入库流量，下泄流量有关，还与上段时间时间结尾水位有关
 %这里可以使用一个全局变量来实现记录上一刻的水位的功能 
 %这里得知适应度函数的x是向量
-%Q_out 是 X
-%可能使用全局变量不太好因此把两个适应度函数合成一个
+%Q_out 是 X，是一个行向量
 %Q_in，inital,step是一个数
-%尝试使用两个
-% function [energy,hydro_energy]=water_energy(Q_in,Q_out,initial_level,step)
-%     hydro_energy=zeros(24/step,1);
-%     last_level=initial_level;
-%     len = 24/step;
-%     %出力效率取0.9
-%     %step为小时数
-%     rate=0.90;
-%     %这里可以后面考虑改成并行计算
-%     for i = 1:len
-%         change_volume = (Q_in - Q_out(i))*step*3600;
-%         change_levlel = change_volume /(2.39*1000*1000*100);
-%         hydro_energy(i)=rate*9.8*Q_out(i)*(last_level+change_levlel/2-end_level(Q_out(i)))*step*3600;
-%         hydro_energy(i)=hydro_energy(i)/1000;%kw==>MW
-%         last_level = last_level+change_levlel;
-%     end
-%     %计算总出力
-%     energy=-sum(hydro_energy);
-%     
-% end
-% %计算出力最小标准差最小的函数
-% %以每小时出力为一个序列
-% %其中的water_power 与自变量x有关
-% %water,wind_power,net_load均是一个数组
-% function load_std=power_std(water_power,wind_power,net_load)
-%     %result=zeros(24,1);
-%     result =net_load-water_power-wind_power;
-%     load_std = std(result);
-% end
-%两个适应度函数合一
-
-% function [energy, load_std] = multiobjective(x,Q_in,initial_level,step,wind_power,net_load)
-%     % 计算水电站出力
-%     [energy,hydro_power]=water_energy(Q_in,x,initial_level,step);
-% 
-%     % 计算出力标准差
-%     load_std=power_std(hydro_power,wind_power,net_load);
-%     %f=[energy, load_std];
-% end
-%尝试使用多个适应度函数
-function energy=water_energy(Q_out,Q_in,initial_level,step)
-    hydro_energy=zeros(24/step,1);
-    last_level=initial_level;
-    len = 24/step;
-    %出力效率取0.9
-    %step为小时数
-    rate=0.90;
-    %这里可以后面考虑改成并行计算
-    for i = 1:len
-        change_volume = (Q_in - Q_out(i))*step*3600;
-        change_levlel = change_volume /(2.39*1000*1000*100);
-        if Q_out(i) < 177  %如果下泄流量小于最小发电流量，那么将不进行发电
-            hydro_energy(i)=0;
-        else
-            hydro_energy(i)=rate*9.8*Q_out(i)*(last_level+change_levlel/2-end_level(Q_out(i)))*step;
-            hydro_energy(i)=hydro_energy(i)/1000;%kw==>MW
-        end
-
-        last_level = last_level+change_levlel;
-    end
-    %计算平均每个时段出力
-    energy=-mean(hydro_energy);
-    
-end
-%尝试一个函数返回两个值，看能不能求
+%以每小时出力为一个序列
+%wind_power,net_load均是一个数组
+%WORK_FULL_DAY只有0或者1两个值，表示来水能不能是当天24小时都发电
 function fitness=V_water_energy(Q_out,Q_in,initial_level,step,wind_power,net_load,WORK_FULL_DAY)
+    %初始化一些数据
+    %(2.39*1000*1000*100)是水库的可调库容，5是可调库容对应水位变化范围
+    volume_per_meter=(2.39*1000*1000*100/5);
     hydro_energy=zeros(1,24/step);
     change_volume=zeros(1,24/step);
     change_level=zeros(1,24/step);
     last_level=initial_level;
     step_time=step*3600;%每个时段的秒数
+    %将入库流量扩展成一个向量，方便后面计算
     Q_in_group=ones(1,24/step)*Q_in;
+    %循环长度（这里是24）
     len = 24/step;
     %出力效率取0.9
-    %step为小时数
     rate=0.90;
-    %这里可以后面考虑改成并行计算,这里不同的情况有不同的，比如只有1，2月不能满发
-    %那么可以区分是否能满发，如果可以满发就按
+    %计算每个时段水库内水的体积改变量
     change_volume = (Q_in_group - Q_out)*step_time;
-    change_levlel = change_volume /(2.39*1000*1000*100);
+    %计算每个时段水库内水的水位改变量，
+    change_levlel = change_volume /volume_per_meter;
     %分离不同天，可以减少if 判断的次数
     if WORK_FULL_DAY
         for i = 1:len
@@ -302,65 +270,12 @@ function fitness=V_water_energy(Q_out,Q_in,initial_level,step,wind_power,net_loa
     
 end
 
-%计算出力最小标准差最小的函数%
-%以每小时出力为一个序列
-%其中的water_power 与自变量x有关
-%water,wind_power,net_load均是一个数组
-function load_std=power_std(Q_out,Q_in,initial_level,step,wind_power,net_load)
-    result=zeros(24,1);
-    hydro_energy=zeros(24/step,1);
-    last_level=initial_level;
-    len = 24/step;
-    %出力效率取0.9
-    %step为小时数
-    rate=0.90;
-    %这里可以后面考虑改成并行计算
-    for i = 1:len
-        change_volume = (Q_in - Q_out(i))*step*3600;
-        change_levlel = change_volume /(2.39*1000*1000*100);
-         if Q_out(i) < 177  %如果下泄流量小于最小发电流量，那么将不进行发电
-            hydro_energy(i)=0;
-            %hydro_energy(i)=rate*9.8*Q_out(i)*(last_level+change_levlel/2-end_level(Q_out(i)))*step/2000;
-         else
-            hydro_energy(i)=rate*9.8*Q_out(i)*(last_level+change_levlel/2-end_level(Q_out(i)))*step;
-            hydro_energy(i)=hydro_energy(i)/1000;%kw==>MW
-         end
-        last_level = last_level+change_levlel;
-        result(i) =net_load(i)-hydro_energy(i)-wind_power(i);
-    end
-    
-    load_std = std(result);
-end
+
 
 %添加适应函数之来水利用率，目前没有添加，之前添加过后效果也不太理想
+%此函数没有使用
 function rate =use_rate(Q_out,Q_in)
     rate= (-sum(Q_out)/(Q_in*24))*100;
 end
 
-
-%设置非线性约束%暂时没有添加
-function [c,ceq] = nonlcon(x,work_no_load,full_load)
-
-if full_load 
-    c=[];
-else
-    %c=zeros(length(x),1);
-    for i=1:length(x)
-        if work_no_load(i)==1
-            c(i) =x(i)-100.00001;
-            %c(i)=0;
-        else
-            c(i) =177-x(i);
-            %c(i)=0;
-        end
-    end
-
-end
-% c=[];
-ceq=[];
-%ceq(1)=x(4)+x(5)+x(6)+x(24)-101*4;
-%ceq(2)=x(2)-177;
-% ceq(3)=x(3)-177;
-%ceq(4)=x(4)-100;
-end
 
