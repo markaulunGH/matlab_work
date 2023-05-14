@@ -1,5 +1,9 @@
-%前置执行条件，需要执行test_precent.m
+%前置执行条件，
+%前提需要执行handle_data.m%%%
+% 需要执行test_precent.m
 % 将数据堆叠在一起
+%绘图各月风电场出力时长百分比
+
 stackedData = [percentages'];    
 
 % 绘制百分比直方堆叠图

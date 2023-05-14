@@ -1,5 +1,9 @@
-%前置执行条件，需要执行test_precent.m
+%前置执行条件，
+%前提需要执行handle_data.m%%%
+% 需要执行test_precent.m
 % 将数据堆叠在一起
+%绘图，需要自行调节图框
+
 energy_stackedData = [energy_percentages'];    
 
 % 绘制百分比直方堆叠图
@@ -24,7 +28,7 @@ hLegend =legend('0','0~10MW','10~20MW','20~40MW','40~60MW','60~80MW','80~99MW');
 set(hLegend, 'Location', 'northwest', 'FontSize', 12, 'Orientation', 'horizontal','NumColumns', 2);
 
 % 添加标题
-title('风电场各出力段出力百分比', 'FontName', '宋体', 'FontSize', 20);
+title('各月风电场出力时长百分比', 'FontName', '宋体', 'FontSize', 20);
 yyaxis right;
 plot([mouth.sum],'k','LineWidth',1.5,'DisplayName', '累计出力'); %月累计出力画上面%
 ylabel('MW');

@@ -1,7 +1,14 @@
 %%功能，加载风力出力数据和流量数据%%
 
 %加载数据脚本，执行其他命令之前需要执行本脚本
-filename = 'G:\大一下\毕业设计多能互补\data\金伦+毕业论文材料\wind_power_data.xls';
+%设置存放数据文件的地方，这里使用的是与handle_data.m同级目录下的数据文件
+%这里建议使用绝对路径，或者将数据与脚本文件设置到同一文件夹下面
+filename = 'wind_power_data.xls';
+% 定义要保存的文件夹和文件名前缀
+%请使用绝对路径，默认保存位置不确定
+folder = './'; % 文件夹名称
+prefix1 = 'mouth_of_everyday'; % 文件名前缀
+prefix = 'mouth';% 文件名前缀
 % 工作表名称,方便集中处理
 sheetNames = {'1yue', '2yue', '3yue', '4yue', '5yue', '6yue', '7yue', '8yue', '9yue', '10yue', '11yue', '12yue'};
 % 跳过每个工作表的第一行%第一行是无用信息
@@ -41,10 +48,6 @@ for i=1:size(data,2)
 end
 
 %scatter(day(1).max);
-% 定义要保存的文件夹和文件名前缀
-folder = 'G:\大一下\毕业设计多能互补\data\test_out'; % 文件夹名称
-prefix1 = 'mouth_of_everyday'; % 文件名前缀
-prefix = 'mouth';% 文件名前缀
 % % % 循环生成和保存每个天平均值然后月的图
 for i = 1:12
     % 生成第i个图

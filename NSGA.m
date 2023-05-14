@@ -33,25 +33,11 @@ winter_load =winter_load_rate*MAX_LOAD_POWER;
 %定义一下是不是设置用水小于或等于来水，为零表示
 USE_LESS_EQUAL_IN=1;
 
+
 %使用一个二维表格记录每个月输出的5个数据
 %24小时的流量数据
 
 %定义目标函数；水电出力最大；系统剩余负荷波动最小
-for count=1:3
-    %原方案
-    if count==1
-        USE_LESS_EQUAL_IN=0;
-        USE_POPULATIONS=280;
-        USE_MAX_GENS=600;
-    elseif count == 2 %优化方案1
-        USE_LESS_EQUAL_IN=1;
-        USE_POPULATIONS=280;
-        USE_MAX_GENS=1000;
-    else  %优化方案2
-        USE_LESS_EQUAL_IN=1;
-        USE_POPULATIONS=200;
-        USE_MAX_GENS=600;
-    end
 
 
 for MOUTH_NUM=1:12
@@ -108,7 +94,7 @@ for MOUTH_NUM=1:12
         A=[];
         A(1,:)=ones(1,24);       
         if Q_in > 1186.2
-            b=[1186.2*24*0.98,-1186.2*24*0.70];%;;
+            b=[1186.2*24*0.98,-1186.2*24*0.80];%;;
             A(2,:)=ones(1,24)*(-1);
         else 
             A(2,:)=ones(1,24)*(-1);
@@ -118,6 +104,25 @@ for MOUTH_NUM=1:12
         intcon=1:1:23;
         disp("SOLVE USE_LESS_EQUAL_IN");
     end
+
+%     %%%循环求解三个方案%%%
+%         %原方案
+%     if count==1
+%         USE_LESS_EQUAL_IN=0;
+%         USE_POPULATIONS=280;
+%         USE_MAX_GENS=600;
+%         intcon=[];
+%     elseif count == 2 %优化方案1
+%         USE_LESS_EQUAL_IN=1;
+%         USE_POPULATIONS=280;
+%         USE_MAX_GENS=1000;
+%         intcon=[];
+%     else  %优化方案2
+%         USE_LESS_EQUAL_IN=1;
+%         USE_POPULATIONS=200;
+%         USE_MAX_GENS=600;
+%     end
+
 
     %每月有5个典型日需要计算
     for ty_day=1:5
@@ -133,7 +138,7 @@ for MOUTH_NUM=1:12
         options = optimoptions('gamultiobj', 'FunctionTolerance',1e-6,'PopulationSize', USE_POPULATIONS, 'Generations',USE_MAX_GENS,'display','final','UseParallel',true);%final
         % 调用 gamultiobj 函数%,use_rate(x,Q_in)
         %[x, fval,exitflag,output,population,scores] = gamultiobj(@(x)[water_energy(x,Q_in,initial_level,STEP),power_std(x,Q_in,initial_level,STEP,wind_power,net_load)], 24, A, b, Aeq, beq, lb, ub,[] , options);
-        [x, fval,exitflag,output,population,scores] = gamultiobj(@(x)[V_water_energy(x,Q_in,initial_level,STEP,wind_power,net_load,WATER_FULL_LOAD)], 24, A, b, Aeq, beq, lb, ub,[] ,[], options);
+        [x, fval,exitflag,output,population,scores] = gamultiobj(@(x)[V_water_energy(x,Q_in,initial_level,STEP,wind_power,net_load,WATER_FULL_LOAD)], 24, A, b, Aeq, beq, lb, ub,[] ,intcon, options);
         %反转结果，自带函数仅能求最小值情况，要求最大值需要先转换成负数最后再把结果转换为正数
         fprintf('Output Generations:%d\n',output.generations);
         %output
@@ -180,17 +185,17 @@ for MOUTH_NUM=1:12
     end
 
 end
-    %原方案
-    if count==1     
-        ga_out_1=ga_out;
-    elseif count == 2 %优化方案1
-        ga_out_LESS_2=ga_out_LESS;      
-    else  %优化方案2
-        ga_out_LESS_3=ga_out_LESS;      
-    end
-
-
-end
+%     %原方案
+%     if count==1     
+%         ga_out_1=ga_out;
+%     elseif count == 2 %优化方案1
+%         ga_out_LESS_2=ga_out_LESS;      
+%     else  %优化方案2
+%         ga_out_LESS_3=ga_out_LESS;      
+%     end
+% 
+% 
+%end
 %run('Pareto.m');
 
 
@@ -244,7 +249,7 @@ function fitness=V_water_energy(Q_out,Q_in,initial_level,step,wind_power,net_loa
     if WORK_FULL_DAY
         for i = 1:len
             hydro_energy(i)=last_level+change_levlel(i)/2-end_level(Q_out(i));%这里只计算不能并行的部分，这里是计算时段平均水位差
-            last_level = last_level+change_levlel(i);
+            last_level = last_level+change_levlel(i);%记录上一时段的水位
         end
     else
         for i = 1:len
@@ -259,13 +264,13 @@ function fitness=V_water_energy(Q_out,Q_in,initial_level,step,wind_power,net_loa
     end
 
     hydro_energy=(hydro_energy.*Q_out*rate)*9.8*step/1000;     %计算出力并且 kw==>MW
-    remain_power=net_load-hydro_energy-wind_power;
-    load_std=std(remain_power);
+    remain_power=net_load-hydro_energy-wind_power;  %计算剩余负荷
+    load_std=std(remain_power);                     %剩余负荷波动标准差
     %计算平均每个时段出力
-    energy=-mean(hydro_energy);
+    energy=-mean(hydro_energy);                     
     %添加剩余负荷差波动范围最小
     %peak_diff=(max(remain_power)-min(remain_power))*0.4;
-
+    %组合两个优化目标，使两个适应度函数缩减为一个，减少中间重复计算的部分，提高性能
     fitness = [energy, load_std];
     
 end
