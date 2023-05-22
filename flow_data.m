@@ -7,7 +7,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %请使用绝对路径，默认数据文件在与脚本同级别目录下
-flow_filename='flow_data.xls';
+flow_filename='G:\best_flow\source_data\flow_data.xls';
 sheetnames='total';
 
 % 读取数据

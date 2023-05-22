@@ -25,5 +25,5 @@ plot(valid_hours,'DisplayName', "总出力时长",'LineWidth',1.5);
 yyaxis right;
 plot([mouth.sum],'k','LineWidth',1.5,'DisplayName', '累计出力'); %月累计出力画上面%
 legend();
-ylabel('MW');
+ylabel('MWh');
 hold off;

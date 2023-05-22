@@ -28,10 +28,10 @@ hLegend =legend('0','0~10MW','10~20MW','20~40MW','40~60MW','60~80MW','80~99MW');
 set(hLegend, 'Location', 'northwest', 'FontSize', 12, 'Orientation', 'horizontal','NumColumns', 2);
 
 % 添加标题
-title('各月风电场出力时长百分比', 'FontName', '宋体', 'FontSize', 20);
+title('风电场不同出力段发电量占比', 'FontName', '宋体', 'FontSize', 20);
 yyaxis right;
 plot([mouth.sum],'k','LineWidth',1.5,'DisplayName', '累计出力'); %月累计出力画上面%
-ylabel('MW');
+ylabel('MWh');
 
 
 hold off;
