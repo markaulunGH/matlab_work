@@ -2,27 +2,35 @@
 %%作用:选出每个月的风电场出力特征%%
 % 得到聚类结果，每个聚类中心即为一个典型出力代表日
 %12个月总的典型日
-all_ty_days =  zeros(12, 5, 1440);%minutes
+%all_ty_days =  zeros(12, 5, 1440);%minutes
+disp('=======>Runing kmean.m<===========');
 all_ty_days_01h =  zeros(12, 5, size(data_0_1h(1).table,1));%
 %请使用绝对路径，默认保存位置不确定
 %<==========================================>
-folder = './'; % 文件夹名称%%%%%%%%%%%%%%%<==>
-%<==========================================>
-prefix_ty = 'typical_days_of_mouth'; % 文件名前缀
-%生成1小时的kmeans聚类数据；
-for i =1:12
-    % 将其按天进行分割，得到 天数 个样本，每个样本包含 24 个数据点
-    samples_01h = reshape(data_0_1h(i).table, size(data_0_1h(i).table,1), size(data_0_1h(i).table,2))';
+if not(isfolder('mouth_tyical_days'))
+    mkdir('./mouth_tyical_days');
+end
 
-    % 对样本进行聚类，选择 k=5
-    [idx_0_1h, centroids_0_1h] = kmeans(samples_01h, 5);
+folder = './mouth_tyical_days'; % 文件夹名称%%%%%%<==>
+%<==========================================>
+
+prefix_ty = 'typical_days_of_mouth'; % 文件名前缀
+if exist('./source_data/all_ty_days_01h.mat','file')==2
+    load('./source_data/all_ty_days_01h.mat','all_ty_days_01h');
+else
+    %生成1小时的kmeans聚类数据；
+    for i =1:12
+        % 将其按天进行分割，得到 天数 个样本，每个样本包含 24 个数据点
+        samples_01h = reshape(data_0_1h(i).table, size(data_0_1h(i).table,1), size(data_0_1h(i).table,2))';
+
+        % 对样本进行聚类，选择 k=5
+        [idx_0_1h, centroids_0_1h] = kmeans(samples_01h, 5);
 
     % 得到聚类结果，每个聚类中心即为一个典型出力代表日
-
-    typical_days_01h = centroids_0_1h;
-    all_ty_days_01h(i,:,:) =centroids_0_1h;
-    % 生成第i个图  
-
+        typical_days_01h = centroids_0_1h;
+        all_ty_days_01h(i,:,:) =centroids_0_1h; 
+        disp("running");
+    end
 end
 %定义要保存的文件夹和文件名前缀
 % 循环生成和保存每个天平均值然后月的图

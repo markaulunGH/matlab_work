@@ -17,7 +17,11 @@ winter_load =winter_load_rate*MAX_LOAD_POWER;
 %请使用绝对路径，默认保存在与脚本同级别目录下
 %请使用绝对路径，默认保存位置不确定
 %<==========================================>
-folder = './'; % 文件夹名称%%%%%%%%%%%%%%%<==>
+if not(isfolder('pareto_photo'))
+    mkdir('./pareto_photo');
+end
+
+folder = './pareto_photo'; % 文件夹名称%%%%%%<==>
 %<==========================================>
 prefix1 = 'mouth_of_Pareto'; % 文件名前缀
 prefix_power='power_of_Pareto'; % 文件名前缀

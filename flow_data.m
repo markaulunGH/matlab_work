@@ -7,7 +7,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %请使用绝对路径，默认数据文件在与脚本同级别目录下
-flow_filename='G:\best_flow\source_data\flow_data.xls';
+flow_filename='.\source_data\flow_data.xls';
 sheetnames='total';
 
 % 读取数据
@@ -67,7 +67,9 @@ line_flow=plot(total_mouth_avg ,'k','LineWidth',1.5,'DisplayName', '平均来水
     % 通过将 LooseInset 设置为 TightInset，可以确保图像的边距最小化。
     set(gcf, 'Units', 'pixels','Position', [100 100 width height]);%设置长宽比
     set(gca, 'LooseInset', get(gca, 'TightInset'));
+    saveas(gcf, './photo/多年来水流量图.png')
     hold off;
+    close;
 %只设置部分需要设置图例的曲线
 legend([line_flow,line_wind] ,'平均来水流量','风电场平均出力');
 % 检查结果

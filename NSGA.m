@@ -32,7 +32,8 @@ summer_load =summer_load_rate*MAX_LOAD_POWER;
 winter_load =winter_load_rate*MAX_LOAD_POWER;
 %定义一下是不是设置用水小于或等于来水，为零表示
 USE_LESS_EQUAL_IN=1;
-
+USE_POPULATIONS=200;
+USE_MAX_GENS=600;
 
 %使用一个二维表格记录每个月输出的5个数据
 %24小时的流量数据
@@ -126,7 +127,7 @@ for MOUTH_NUM=1:12
 
     %每月有5个典型日需要计算
     for ty_day=1:5
-        fprintf('Computer Mouth:(%d/12), typical days:(%d/5);Solutions:(%d/3)\n',MOUTH_NUM,ty_day,count);
+        fprintf('Computer Mouth:(%d/12), typical days:(%d/5)\n',MOUTH_NUM,ty_day);
         wind_power=zeros(1,size(all_ty_days_01h,3));
         wind_power(:,:)=all_ty_days_01h(MOUTH_NUM,ty_day,:);
         %如果考虑了限量的上下限限制和水量平衡，那么应该可能暂时不需要考虑设计蓄水位和死水位限制 
