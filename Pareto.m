@@ -17,13 +17,14 @@ winter_load =winter_load_rate*MAX_LOAD_POWER;
 %请使用绝对路径，默认保存在与脚本同级别目录下
 %请使用绝对路径，默认保存位置不确定
 %<==========================================>
-if not(isfolder('pareto_photo'))
-    mkdir('./pareto_photo');
+PARETO_DIR='./pareto_photo';
+if not(isfolder(PARETO_DIR))
+    mkdir(PARETO_DIR);
 end
-if not(isfolder('./photo'))
-    assert(0,'=======>Pareto.m:!!!ERROE:Cannot create folder, please check permissions!!!')
+if not(isfolder(PARETO_DIR))
+    assert(0,'=====>Pareto.m:!!!ERROE:Cannot create folder, please check permissions!!!')
 end
-folder = './pareto_photo'; % 文件夹名称%%%%%%<==>
+folder = PARETO_DIR; % 文件夹名称%%%%%%<==>
 %<==========================================>
 prefix1 = 'mouth_of_Pareto'; % 文件名前缀
 prefix_power='power_of_Pareto'; % 文件名前缀
@@ -79,7 +80,7 @@ for i=1:12
         end
     end
 end
-disp('=======>Pareto.m:Saved Pareto photo Done.');
+disp('=====>Pareto.m:Saved Pareto photo Done.');
 disp('=======>Pareto.m:Done.<===========');
 
 %计算只有风和有风和有水的峰谷差
@@ -98,7 +99,7 @@ end
 %平均来水利用率
 water_use_rate = water_use_day./total_mouth_avg;
 %剩余负荷峰谷差的平均值
-tmp_A=mean(peak_valley_diff)
+%tmp_A=mean(peak_valley_diff)
 %剩余负荷波动削减率
 mean_reduce_rate=mean(reduce_rate);
 

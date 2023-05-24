@@ -33,7 +33,7 @@ summer_load =summer_load_rate*MAX_LOAD_POWER;
 winter_load =winter_load_rate*MAX_LOAD_POWER;
 %定义一下是不是设置用水小于或等于来水，为零表示
 USE_LESS_EQUAL_IN=1;
-USE_POPULATIONS=200;
+USE_POPULATIONS=50;
 USE_MAX_GENS=600;
 
 %使用一个二维表格记录每个月输出的5个数据
@@ -42,14 +42,14 @@ USE_MAX_GENS=600;
 %定义目标函数；水电出力最大；系统剩余负荷波动最小
 
 if exist('./source_data/ga_out_LESS.mat','file')==2
-    disp("=======>NSGA.m:Pre-saved files exist, select them for consistency.");
+    disp("=====>NSGA.m:Pre-saved files exist, select them for consistency.");
     load('./source_data/ga_out_LESS.mat','ga_out_LESS');
 else
-    disp('=======>NSGA.m:No pre-saved files found, the next one needs to run for 1 to 2 hours');
-    fprintf("=======>NSGA.m:population:%d;max Generations:%d.\n",USE_POPULATIONS,USE_MAX_GENS);
+    disp('=====>NSGA.m:No pre-saved files found, the next one needs to run for 1 to 2 hours');
+    fprintf("=====>NSGA.m:population:%d;max Generations:%d.\n",USE_POPULATIONS,USE_MAX_GENS);
+for MOUTH_NUM=1:12
     tic;
     t0=cputime;
-for MOUTH_NUM=1:12
     Q_in=total_mouth_avg(MOUTH_NUM);
     %水量平衡（等式平衡
     Aeq=ones(1,24);
@@ -135,7 +135,7 @@ for MOUTH_NUM=1:12
 
     %每月有5个典型日需要计算
     for ty_day=1:5
-        fprintf('=======>NSGA.m:Computer Mouth:(%d/12), typical days:(%d/5)\n',MOUTH_NUM,ty_day);
+        fprintf('=====>NSGA.m:Computer Mouth:(%d/12), typical days:(%d/5)\n',MOUTH_NUM,ty_day);
         wind_power=zeros(1,size(all_ty_days_01h,3));
         wind_power(:,:)=all_ty_days_01h(MOUTH_NUM,ty_day,:);
         %如果考虑了限量的上下限限制和水量平衡，那么应该可能暂时不需要考虑设计蓄水位和死水位限制 
@@ -194,10 +194,10 @@ for MOUTH_NUM=1:12
     end
     cpu_time=cputime-t0;
     clock_time=toc;
-    fprintf('CPU_time:%f;clock_time:%d.\n',cpu_time,clock_time);
+    fprintf('CPU_time:%f s;clock_time:%f s.\n',cpu_time,clock_time);
 
 end%for
-    disp('=======>NSGA.m:Save var:ga_out_LESS to ./source_data/ga_out_LESS.mat.');
+    disp('=====>NSGA.m:Save var:ga_out_LESS to ./source_data/ga_out_LESS.mat.');
     save('./source_data/ga_out_LESS.mat','ga_out_LESS');
 
 end%if
