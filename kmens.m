@@ -3,7 +3,7 @@
 % 得到聚类结果，每个聚类中心即为一个典型出力代表日
 %12个月总的典型日
 %all_ty_days =  zeros(12, 5, 1440);%minutes
-disp('=======>Runing kmean.m<===========');
+disp('=======>Running kmean.m<===========');
 all_ty_days_01h =  zeros(12, 5, size(data_0_1h(1).table,1));%
 %请使用绝对路径，默认保存位置不确定
 %<==========================================>
@@ -16,8 +16,10 @@ folder = './mouth_tyical_days'; % 文件夹名称%%%%%%<==>
 
 prefix_ty = 'typical_days_of_mouth'; % 文件名前缀
 if exist('./source_data/all_ty_days_01h.mat','file')==2
+    disp("=======>kmeans.m:Pre-saved files exist, select them for consistency.");
     load('./source_data/all_ty_days_01h.mat','all_ty_days_01h');
 else
+    disp("=======>kmeans.mrunning kmeans");
     %生成1小时的kmeans聚类数据；
     for i =1:12
         % 将其按天进行分割，得到 天数 个样本，每个样本包含 24 个数据点
@@ -29,7 +31,7 @@ else
     % 得到聚类结果，每个聚类中心即为一个典型出力代表日
         typical_days_01h = centroids_0_1h;
         all_ty_days_01h(i,:,:) =centroids_0_1h; 
-        disp("running");
+        
     end
 end
 %定义要保存的文件夹和文件名前缀
@@ -68,3 +70,4 @@ for i = 1:12
     hold off;
     close;
 end
+disp('=======>kmeams.m:Done<========');

@@ -5,8 +5,8 @@
 %流量数据文件夹，这里处理流量数据的时候只按照特定文件进行设计
 %如果需要处理其他流量的数据文件，可能需要对下面的处理过程进行修改
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%请使用绝对路径，默认数据文件在与脚本同级别目录下
+disp('=======>Running flow_data.m<===========');
+%默认数据文件在与脚本同级别目录下
 flow_filename='.\source_data\flow_data.xls';
 sheetnames='total';
 
@@ -39,38 +39,31 @@ total_mouth_avg=mean(years_flow,2);
 flow_max        =max((years_flow'));
 flow_min        =min((years_flow'));
 flow_std        =std((years_flow'));
-    %画平均值
+%画平均值
 line_flow=plot(total_mouth_avg ,'k','LineWidth',1.5,'DisplayName', '平均来水流量');
-    
-    xlabel('月份');
-    ylabel('流量(立方米每秒）');
-    % 设置坐标轴范围，方便查看
-    %ylim([0, 100]);
-    xlim([1, 12]);
-    % 设置 x 轴和 y 轴的标记值
-
-    title(sprintf('多年来水流量图'),'FontName', '宋体', 'FontSize', 20);
-
-    % 生成第i个图
-    figure(1)
-    % 假设第i个图的变量名称为data_
-
-    hold on;
-    colors = hsv(years_num);%生成不同的颜色
-    for j=30:years_num
-        plot(years_flow(:, j),'Color',colors(j,:),'LineWidth',0.5,'DisplayName','');
-    end
-
-    width=800;
-    height=600;
-    %TightInset 表示获取 axes 的 tight inset（紧凑的内边距），LooseInset 表示设置 axes 的 loose inset（宽松的内边距）。
-    % 通过将 LooseInset 设置为 TightInset，可以确保图像的边距最小化。
-    set(gcf, 'Units', 'pixels','Position', [100 100 width height]);%设置长宽比
-    set(gca, 'LooseInset', get(gca, 'TightInset'));
-    saveas(gcf, './photo/多年来水流量图.png')
-    hold off;
-    close;
+xlabel('月份');
+ylabel('流量(立方米每秒）');
+% 设置坐标轴范围，方便查看
+xlim([1, 12]);
+title(sprintf('多年来水流量图'),'FontName', '宋体', 'FontSize', 20);
+figure(1);
+hold on;
+colors = hsv(years_num);%生成不同的颜色
+for j=30:years_num
+   plot(years_flow(:, j),'Color',colors(j,:),'LineWidth',0.5,'DisplayName','');
+end
+width=800;
+height=600;
+%TightInset 表示获取 axes 的 tight inset（紧凑的内边距），LooseInset 表示设置 axes 的 loose inset（宽松的内边距）。
+% 通过将 LooseInset 设置为 TightInset，可以确保图像的边距最小化。
+set(gcf, 'Units', 'pixels','Position', [100 100 width height]);%设置长宽比
+set(gca, 'LooseInset', get(gca, 'TightInset'));
 %只设置部分需要设置图例的曲线
-legend([line_flow,line_wind] ,'平均来水流量','风电场平均出力');
+legend([line_flow,line_wind] ,{'平均来水流量','风电场平均出力'});
+saveas(gcf, './photo/多年来水流量图.png')
+hold off;
+close;
+
+disp('=======>flow_data.m:Done.<=======');
 % 检查结果
-disp(length(monthly_means));  % 输出：456
+%disp(length(monthly_means));  % 输出：456

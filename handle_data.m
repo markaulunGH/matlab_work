@@ -3,7 +3,7 @@
 %加载数据脚本，执行其他命令之前需要执行本脚本
 %设置存放数据文件的地方，这里使用的是与handle_data.m同级目录下的数据文件
 %这里建议使用绝对路径，或者将数据与脚本文件设置到同一文件夹下面
-disp('=======>Runing handle_data.m<===========');
+disp('=======>Running handle_data.m<===========');
 filename = '.\source_data\wind_power_data.xls';
 % 定义要保存的文件夹和文件名前缀
 %请使用绝对路径，默认保存位置不确定
@@ -11,7 +11,7 @@ if not(isfolder('./photo'))
     mkdir('./photo');
 end
 if not(isfolder('./photo'))
-    assert(0,'!!!ERROE:Can not found floder, Please Check right!!!')
+    assert(0,'=====>handle_data.m:!!!ERROE:Cannot create folder, please check permissions!!!')
 end
 
 folder = './photo'; % 文件夹名称
@@ -21,14 +21,14 @@ prefix = 'mouth';% 文件名前缀
 sheetNames = {'1yue', '2yue', '3yue', '4yue', '5yue', '6yue', '7yue', '8yue', '9yue', '10yue', '11yue', '12yue'};
 % 跳过每个工作表的第一行%第一行是无用信息
 skipRows = 1; 
-disp('=======>Load wind power data ...<===========');
+disp('=====>handle_data.m:Load wind power data ...');
 %从xls读取数据到matlab中
 for i = 1:length(sheetNames)
     sheetName = sheetNames{i};
     data(i).table = readtable(filename, 'Sheet', sheetName,'HeaderLines', skipRows); % 读取数据表格,并且从第二行开始读
     data(i).table = table2array(data(i).table); % table2array，方便计算 
 end
-disp('=======>Load wind power data succeed<===========');
+disp('=====>handle_data.m:Load wind power data succeed.');
 total_year=0;%年出力
 %计算一些特征值
 for i = 1:length(sheetNames)
@@ -56,7 +56,7 @@ for i=1:size(data,2)
     end
     
 end
-disp('=======>Begin draw photo in folder: ./photo <===========');
+disp('=====>Begin draw photo in folder: ./photo ');
 %scatter(day(1).max);
 % % % % 循环生成和保存每个天平均值然后月的图
 for i = 1:12
@@ -162,13 +162,13 @@ title(sprintf("各月出力图"), 'FontName', '宋体', 'FontSize', 20);
 saveas(gcf, './photo/mouth_mean.png')
 hold off;
 close;
-disp('=======>Draw photo Done <===========');
-disp('=======>hand_data.m Done <===========');
-disp('Checking kmeans.m...')
-if exist('./source_data/all_ty_days_01h.mat','file')==2
-    disp('Exist kmeans.m');
-    disp('Beging execute kmeans.m');
-    run('kmens.m');
-else
-    disp('!!!!!!ERROR :Not found kmeans.m,Please check!!!!!!!')
-end
+%disp('=======>Draw photo Done <===========');
+disp('=======>hand_data.m:Done.<=======');
+% disp('Checking kmeans.m...')
+% if exist('./kmens.m','file')==2
+%     disp('Exist kmeans.m');
+%     disp('Beging execute kmeans.m');
+%     run('kmens.m');
+% else
+%     disp('!!!!!!ERROR :Not found kmeans.m,Please check!!!!!!!')
+% end

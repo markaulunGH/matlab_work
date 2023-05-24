@@ -5,7 +5,7 @@
 %%%NSGA.m 计算60个典型日需要在i7-7700HQ @ 2.80Ghz 笔记本上运行 1~2小时，并且运行后的结果也有很大的随机性，
 %%%也建议将其生成的最后结果ga_out_LESS 保存到本地备用，使用的时候从本地导入数据，这样就不需要运行NSGA.m以节省时间
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+disp('=======>Running Pareto.m<===========');
 %电网负荷特性
 MAX_LOAD_POWER=11800;
 summer_load_rate=[0.936,0.920,0.912,0.890,0.900,0.936,0.953,0.957,0.959,0.948,0.952,0.967,0.958,0.951,0.969,0.965,0.982,0.970,0.956,0.949,1.000,0.991,0.964,0.950];
@@ -20,13 +20,16 @@ winter_load =winter_load_rate*MAX_LOAD_POWER;
 if not(isfolder('pareto_photo'))
     mkdir('./pareto_photo');
 end
-
+if not(isfolder('./photo'))
+    assert(0,'=======>Pareto.m:!!!ERROE:Cannot create folder, please check permissions!!!')
+end
 folder = './pareto_photo'; % 文件夹名称%%%%%%<==>
 %<==========================================>
 prefix1 = 'mouth_of_Pareto'; % 文件名前缀
 prefix_power='power_of_Pareto'; % 文件名前缀
 prefix_level='level_of_Pareto'; % 文件名前缀
 prefix2='target_Pareto'; % 文件名前缀
+disp('=======>Pareto.m:Saving Pareto photo to ./pareto_photo ...');
 for i=1:12
     figure(i);
     % 绘制散点图
@@ -76,8 +79,8 @@ for i=1:12
         end
     end
 end
-
-
+disp('=======>Pareto.m:Saved Pareto photo Done.');
+disp('=======>Pareto.m:Done.<===========');
 
 %计算只有风和有风和有水的峰谷差
 peak_valley_diff=w_left-ww_left;
@@ -98,6 +101,8 @@ water_use_rate = water_use_day./total_mouth_avg;
 tmp_A=mean(peak_valley_diff)
 %剩余负荷波动削减率
 mean_reduce_rate=mean(reduce_rate);
+
+
 
 
 %根据流量计算尾水位
