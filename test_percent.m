@@ -34,7 +34,10 @@ for i=1:size(data,2)
     % 计算频数的累计百分比
     cumPercent(:,i) = cumCounts / total_count * 100;
 end
-
+%各段出力累计出力
+total_wind_energy=sum(energy_power,2);
+%各段出力累计出力时长
+total_wind_hours=sum(sum_power,2);
 
 
 
